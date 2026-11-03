@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LogicX – Nos applications</title>
+  <meta name="description" content="Les applications de LogicX, en un seul endroit.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-section="accueil">
+  <main class="page" id="main"><p class="muted">Chargement…</p></main>
+
+  <script type="module">
+    import { db } from "/js/config.js";
+    import { renderTopbar, renderTabbar, esc } from "/js/nav.js";
+    import { collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    renderTopbar(`<a href="/recherche" style="font-size:13px;font-weight:600;color:#0369A1">Toutes les applications</a>`);
+    renderTabbar("accueil");
+
+    const main = document.getElementById("main");
+    const snap = await getDocs(query(collection(db, "apps"), orderBy("name")));
+    const apps = snap.docs.map(d => d.data());
+
+    const card = a => `
+      <a class="card row" href="/apps/${encodeURIComponent(a.slug)}">
+        <div class="tile" style="background:${esc(a.color || "#0369A1")}">${esc(a.initials)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:600">${esc(a.name)}</div>
+          <div class="muted">Version ${esc(a.version)}</div>
+        </div>
+        <span class="pill">Voir</span>
+      </a>`;
+
+    main.innerHTML = `
+      <div class="card" style="background:#fff">
+        <span class="label">Application du moment</span>
+        ${apps[0] ? `
+          <div class="row" style="margin-top:12px">
+            <div class="tile" style="width:52px;height:52px;background:${esc(apps[0].color || "#0369A1")}">${esc(apps[0].initials)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:18px;font-weight:700">${esc(apps[0].name)}</div>
+              <div class="muted">${esc(apps[0].description || "")}</div>
+            </div>
+          </div>
+          <a class="btn" style="margin-top:12px;background:var(--tint);color:var(--primary);height:40px;width:auto;align-self:flex-start;padding:0 18px" href="/apps/${encodeURIComponent(apps[0].slug)}">Découvrir</a>`
+        : `<p class="muted">Aucune application pour le moment.</p>`}
+      </div>
+
+      <h1 style="margin:0;font-size:18px;font-weight:700">Nos applications</h1>
+      ${apps.length ? apps.map(card).join("") : `<p class="muted">Aucune application pour le moment.</p>`}
+    `;
+  </script>
+</body>
+  </html>
