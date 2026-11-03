@@ -2,12 +2,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// REMPLACE ces valeurs par celles de ta console Firebase (Paramètres du projet > Vos applications)
 const firebaseConfig = {
-  apiKey: "VOTRE_API_KEY",
-  authDomain: "logic-x.firebaseapp.com",
-  projectId: "logic-x",
-  appId: "VOTRE_APP_ID"
+  apiKey: "AIzaSyCaO0vjvlUGtgMgwFuzI2Ac3-GcDKajuRc",
+  authDomain: "logicx-store.firebaseapp.com",
+  projectId: "logicx-store",
+  storageBucket: "logicx-store.firebasestorage.app",
+  messagingSenderId: "644232002003",
+  appId: "1:644232002003:web:7744f433d9afe2961e1726"
 };
 
 export const app = initializeApp(firebaseConfig);
