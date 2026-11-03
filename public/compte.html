@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LogicX – Compte</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-section="compte">
+  <main class="page" id="main"><p class="muted">Chargement…</p></main>
+
+  <script type="module">
+    import { auth } from "/js/config.js";
+    import { renderTopbar, renderTabbar, getDownloads } from "/js/nav.js";
+    import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    renderTopbar();
+    renderTabbar("compte");
+
+    const main = document.getElementById("main");
+    const downloadsCount = getDownloads().length;
+
+    function renderSignedOut() {
+      main.innerHTML = `
+        <div class="card" style="display:flex;flex-direction:column;gap:14px;padding:20px">
+          <h1 style="margin:0;font-size:20px;font-weight:800">Votre compte</h1>
+          <p style="margin:0;font-size:14px;line-height:1.5;color:#334155">Connectez-vous avec Google pour publier vos avis, retrouver vos applications sur tous vos appareils et être prévenu des nouvelles versions.</p>
+          <button class="btn btn-ghost" id="login">Continuer avec Google</button>
+          <p class="muted" id="err" style="margin:0"></p>
+        </div>
+        <p class="muted">Vous pouvez utiliser le site sans compte : la connexion est facultative.</p>`;
+
+      document.getElementById("login").addEventListener("click", async () => {
+        try {
+          await signInWithPopup(auth, new GoogleAuthProvider());
+        } catch (e) {
+          document.getElementById("err").textContent = "La connexion a échoué. Réessayez.";
+        }
+      });
+    }
+
+    function renderSignedIn(user) {
+      main.innerHTML = `
+        <div class="card row" style="padding:18px">
+          <div class="tile" style="width:52px;height:52px;border-radius:50%;background:#E0F2FE;color:#0369A1">${(user.displayName || "?").charAt(0).toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:16px;font-weight:700">${user.displayName || "Compte Google"}</div>
+            <div class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${user.email || ""}</div>
+            <div style="font-size:12px;font-weight:600;color:#0369A1">Connecté avec Google</div>
+          </div>
+        </div>
+        <a class="card row" href="/mes-applications">
+          <span style="flex:1;font-weight:600">Mes applications</span>
+          <span class="pill">${downloadsCount}</span>
+        </a>
+        <button class="btn btn-ghost" id="logout">Se déconnecter</button>`;
+
+      document.getElementById("logout").addEventListener("click", () => signOut(auth));
+    }
+
+    onAuthStateChanged(auth, user => user ? renderSignedIn(user) : renderSignedOut());
+  </script>
+</body>
+</html>
