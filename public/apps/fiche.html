@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LogicX – Application</title>
+  <meta name="description" content="Application LogicX à télécharger.">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-section="accueil">
+  <main class="page" id="app"><p class="muted">Chargement…</p></main>
+
+  <script type="module">
+    import { db } from "/js/config.js";
+    import { renderTopbar, renderTabbar, esc, addDownload } from "/js/nav.js";
+    import { collection, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    renderTopbar(`<a href="/" style="font-size:13px;font-weight:600;color:#0369A1">Toutes les applications</a>`);
+    renderTabbar("accueil");
+
+    // /apps/momo-registre -> "momo-registre"
+    const slug = decodeURIComponent(location.pathname.split("/").filter(Boolean)[1] || "");
+    const main = document.getElementById("app");
+
+    const snap = await getDocs(query(collection(db, "apps"), where("slug", "==", slug), limit(1)));
+
+    if (snap.empty) {
+      main.innerHTML = `<h1 style="margin:0;font-size:22px">Application introuvable</h1>
+        <a class="pill" href="/" style="align-self:flex-start">Retour à l'accueil</a>`;
+    } else {
+      const a = snap.docs[0].data();
+      document.title = `${a.name} – LogicX`;
+
+      // Résumé des avis
+      const reviewsSnap = await getDocs(query(collection(db, "reviews"), where("appSlug", "==", a.slug)));
+      const ratings = reviewsSnap.docs.map(d => d.data().rating).filter(r => typeof r === "number");
+      const count = ratings.length;
+      const average = count ? (ratings.reduce((s, r) => s + r, 0) / count).toFixed(1) : "--";
+
+      main.innerHTML = `
+        <nav class="muted" style="font-size:12px"><a href="/">Accueil</a> › ${esc(a.name)}</nav>
+
+        <section class="row" style="gap:16px">
+          <div class="tile" style="width:80px;height:80px;border-radius:22px;font-size:22px;background:${esc(a.color || "#0369A1")}">${esc(a.initials)}</div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+            <h1 style="margin:0;font-size:20px;font-weight:700">${esc(a.name)}</h1>
+            <span class="muted">Version ${esc(a.version)} · Android</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            ${a.apkUrl
+              ? `<a id="dl" href="${esc(a.apkUrl)}" aria-label="Télécharger l'APK" style="color:#0369A1">
+                   <svg width="30" height="30" viewBox="0 -960 960 960" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
+                 </a>`
+              : `<span class="muted" style="font-size:12px">Bientôt</span>`}
+            <span class="muted" style="font-size:11px">${esc(a.sizeMb)} Mo</span>
+          </div>
+        </section>
+
+        <div style="height:1px;background:#E2E8F0"></div>
+
+        <section style="display:flex;flex-direction:column;gap:10px">
+          <h2 style="margin:0;font-size:16px;font-weight:700">Ce que fait l'application</h2>
+          <p style="margin:0;font-size:14px;line-height:1.6;color:#334155">${esc(a.description || "")}</p>
+        </section>
+
+        <section style="display:flex;flex-direction:column;gap:10px">
+          <h2 style="margin:0;font-size:16px;font-weight:700">Informations</h2>
+          <div class="card" style="padding:0 14px">
+            ${[
+              ["Développeur", "Logicx"],
+              ["Catégorie", a.category],
+              ["Taille", `${a.sizeMb} Mo`],
+              ["Android", `${a.minAndroid} et plus`],
+              ["Version", a.version]
+            ].map(([k, v]) => `
+              <div style="display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #E2E8F0;font-size:14px">
+                <span class="muted">${k}</span><span style="font-weight:600">${esc(v)}</span>
+              </div>`).join("")}
+          </div>
+        </section>
+
+        <section class="card" style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <h2 style="margin:0;font-size:16px;font-weight:700">Notes et avis</h2>
+            <a href="/apps/${encodeURIComponent(a.slug)}/avis" style="font-size:13px;font-weight:600;color:#0369A1">Tout voir</a>
+          </div>
+          <div class="row" style="gap:16px">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-right:16px;border-right:1px solid #E2E8F0">
+              <span style="font-size:24px;font-weight:800">${average}</span>
+              <span class="muted" style="font-size:12px">${count} avis</span>
+            </div>
+            <span class="muted" style="line-height:1.5">${count ? "Voir ce que disent les utilisateurs." : "Aucun avis pour le moment. Soyez le premier à donner le vôtre."}</span>
+          </div>
+        </section>
+      `;
+
+      // Enregistre le téléchargement sur l'appareil, pour l'onglet « Mes apps »
+      document.getElementById("dl")?.addEventListener("click", () => addDownload(a));
+    }
+  </script>
+</body>
+</html>
