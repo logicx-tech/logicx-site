@@ -1,0 +1,11 @@
+{
+  "hosting": {
+    "public": "public",
+    "ignore": ["firebase.json", "firestore.rules", "**/.*", "**/node_modules/**"],
+    "cleanUrls": true,
+    "rewrites": [
+      { "source": "/apps/*/avis", "destination": "/apps/avis.html" },
+      { "source": "/apps/**", "destination": "/apps/fiche.html" }
+    ]
+  }
+}
