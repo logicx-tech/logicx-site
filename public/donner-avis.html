@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LogicX – Donner un avis</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-section="compte">
+  <main class="page" id="main"><p class="muted">Chargement…</p></main>
+
+  <script type="module">
+    import { auth, db } from "/js/config.js";
+    import { renderTopbar, renderTabbar, esc } from "/js/nav.js";
+    import { collection, addDoc, getDocs, query, where, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    renderTopbar();
+    renderTabbar("compte");
+
+    const main = document.getElementById("main");
+    const slug = new URLSearchParams(location.search).get("app") || "";
+
+    const appSnap = await getDocs(query(collection(db, "apps"), where("slug", "==", slug), limit(1)));
+    if (appSnap.empty) {
+      main.innerHTML = `<h1 style="margin:0;font-size:22px">Application introuvable</h1>`;
+    } else {
+      const a = appSnap.docs[0].data();
+      document.title = `Donner un avis – ${a.name}`;
+
+      let rating = 0;
+
+      function renderForm(user) {
+        main.innerHTML = `
+          <nav class="muted" style="font-size:12px"><a href="/">Accueil</a> › <a href="/apps/${encodeURIComponent(slug)}">${esc(a.name)}</a> › Donner un avis</nav>
+
+          <section class="row">
+            <div class="tile" style="background:${esc(a.color || "#0369A1")}">${esc(a.initials)}</div>
+            <div><div style="font-size:16px;font-weight:700">${esc(a.name)}</div><div class="muted">Version ${esc(a.version)}</div></div>
+          </section>
+
+          <section style="display:flex;flex-direction:column;gap:10px">
+            <span class="label">Votre note</span>
+            <div class="stars" role="radiogroup" aria-label="Note sur 5">
+              ${[1, 2, 3, 4, 5].map(n => `
+                <button type="button" data-n="${n}" aria-label="${n} étoile${n > 1 ? "s" : ""}">
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="${n <= rating ? "#FFA726" : "#CBD5E1"}"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>
+                </button>`).join("")}
+            </div>
+          </section>
+
+          <section style="display:flex;flex-direction:column;gap:8px">
+            <label class="label" for="texte">Votre avis</label>
+            <textarea id="texte" class="field" rows="6" maxlength="1000" style="height:auto;padding:12px 14px;resize:none;line-height:1.5" placeholder="Qu'est-ce que l'application vous apporte ?"></textarea>
+          </section>
+
+          <p id="msg" class="muted" style="margin:0"></p>
+          <button class="btn" id="publier">Publier l'avis</button>
+        `;
+
+        main.querySelectorAll("[data-n]").forEach(b => b.addEventListener("click", () => {
+          rating = Number(b.dataset.n);
+          renderForm(user);
+        }));
+
+        document.getElementById("publier").addEventListener("click", async () => {
+          const text = document.getElementById("texte").value.trim();
+          const msg = document.getElementById("msg");
+          if (rating < 1) { msg.textContent = "Choisissez une note."; return; }
+          if (!text) { msg.textContent = "Écrivez votre avis."; return; }
+          try {
+            await addDoc(collection(db, "reviews"), {
+              appSlug: slug,
+              uid: user.uid,
+              name: user.displayName || "Utilisateur",
+              rating,
+              text,
+              createdAt: serverTimestamp()
+            });
+            location.href = `/apps/${encodeURIComponent(slug)}/avis`;
+          } catch (e) {
+            msg.textContent = "Publication impossible pour le moment. Réessayez.";
+          }
+        });
+      }
+
+      function renderSignedOut() {
+        main.innerHTML = `
+          <h1 style="margin:0;font-size:20px;font-weight:800">Connectez-vous pour publier</h1>
+          <p class="muted" style="margin:0">Votre avis est lié à votre compte Google. La lecture des avis reste libre.</p>
+          <button class="btn btn-ghost" id="login">Continuer avec Google</button>
+          <p class="muted" id="err" style="margin:0"></p>`;
+        document.getElementById("login").addEventListener("click", async () => {
+          try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+          catch (e) { document.getElementById("err").textContent = "La connexion a échoué. Réessayez."; }
+        });
+      }
+
+      onAuthStateChanged(auth, user => user ? renderForm(user) : renderSignedOut());
+    }
+  </script>
+</body>
+  </html>
