@@ -37,6 +37,19 @@
       const count = ratings.length;
       const average = count ? (ratings.reduce((s, r) => s + r, 0) / count).toFixed(1) : "--";
 
+      // Captures d'écran : liste de liens stockée dans le champ "captures" de la fiche
+      const captures = Array.isArray(a.captures) ? a.captures.filter(Boolean) : [];
+      const capturesHtml = captures.length ? `
+        <section style="display:flex;flex-direction:column;gap:10px">
+          <h2 style="margin:0;font-size:16px;font-weight:700">Captures d'écran</h2>
+          <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory">
+            ${captures.map(url => `
+              <img src="${esc(url)}" alt="Capture d'écran de ${esc(a.name)}" loading="lazy"
+                   style="height:300px;width:auto;max-width:70%;flex-shrink:0;border-radius:14px;border:1px solid #E2E8F0;background:#fff;scroll-snap-align:start">
+            `).join("")}
+          </div>
+        </section>` : "";
+
       main.innerHTML = `
         <nav class="muted" style="font-size:12px"><a href="/">Accueil</a> › ${esc(a.name)}</nav>
 
@@ -57,6 +70,8 @@
         </section>
 
         <div style="height:1px;background:#E2E8F0"></div>
+
+        ${capturesHtml}
 
         <section style="display:flex;flex-direction:column;gap:10px">
           <h2 style="margin:0;font-size:16px;font-weight:700">Ce que fait l'application</h2>
