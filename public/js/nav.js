@@ -50,8 +50,16 @@ export const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
 // Logo officiel (disque bleu avec flèche de téléchargement)
 export const LOGO_SVG = `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="56" fill="#0369A1"/><path d="M60 36V72M42 56L60 74L78 56" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><rect x="42" y="84" width="36" height="7" rx="3.5" fill="#FFFFFF"/></svg>`;
 
-// Haut de page commun
+// Haut de page commun + icône de l'onglet du navigateur (même logo)
 export function renderTopbar(rightHtml = "") {
+  if (!document.querySelector('link[rel="icon"]')) {
+    const icon = document.createElement("link");
+    icon.rel = "icon";
+    icon.type = "image/svg+xml";
+    icon.href = "data:image/svg+xml," + encodeURIComponent(LOGO_SVG);
+    document.head.appendChild(icon);
+  }
+
   const header = document.createElement("header");
   header.className = "topbar";
   header.innerHTML = `<a class="brand" href="/">${LOGO_SVG}LogicX</a>${rightHtml}`;
