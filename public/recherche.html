@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LogicX – Recherche</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-section="recherche">
+  <main class="page" id="main">
+    <input id="q" class="field" type="search" placeholder="Rechercher une application" aria-label="Rechercher une application">
+    <p class="muted" id="count"></p>
+    <div id="results" style="display:flex;flex-direction:column;gap:12px"></div>
+  </main>
+
+  <script type="module">
+    import { db } from "/js/config.js";
+    import { renderTopbar, renderTabbar, esc } from "/js/nav.js";
+    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    renderTopbar();
+    renderTabbar("recherche");
+
+    const snap = await getDocs(collection(db, "apps"));
+    const apps = snap.docs.map(d => d.data());
+    const input = document.getElementById("q");
+    const results = document.getElementById("results");
+    const count = document.getElementById("count");
+
+    function show() {
+      const q = input.value.trim().toLowerCase();
+      const list = q
+        ? apps.filter(a => `${a.name} ${a.category || ""} ${a.description || ""}`.toLowerCase().includes(q))
+        : apps;
+      count.textContent = `${list.length} résultat${list.length > 1 ? "s" : ""}`;
+      results.innerHTML = list.map(a => `
+        <a class="card row" href="/apps/${encodeURIComponent(a.slug)}">
+          <div class="tile" style="background:${esc(a.color || "#0369A1")}">${esc(a.initials)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600">${esc(a.name)}</div>
+            <div class="muted">${esc(a.category || "")} · v${esc(a.version)}</div>
+          </div>
+          <span class="pill">Voir</span>
+        </a>`).join("");
+    }
+
+    input.addEventListener("input", show);
+    show();
+  </script>
+</body>
+</html>
