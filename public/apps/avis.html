@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LogicX – Notes et avis</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-section="accueil">
+  <main class="page" id="main"><p class="muted">Chargement…</p></main>
+
+  <script type="module">
+    import { db } from "/js/config.js";
+    import { renderTopbar, renderTabbar, esc } from "/js/nav.js";
+    import { collection, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    renderTopbar(`<a href="/" style="font-size:13px;font-weight:600;color:#0369A1">Toutes les applications</a>`);
+    renderTabbar("accueil");
+
+    // /apps/momo-registre/avis -> "momo-registre"
+    const slug = decodeURIComponent(location.pathname.split("/").filter(Boolean)[1] || "");
+    const main = document.getElementById("main");
+
+    const appSnap = await getDocs(query(collection(db, "apps"), where("slug", "==", slug), limit(1)));
+    if (appSnap.empty) {
+      main.innerHTML = `<h1 style="margin:0;font-size:22px">Application introuvable</h1>`;
+    } else {
+      const a = appSnap.docs[0].data();
+      document.title = `${a.name} – Notes et avis`;
+
+      const revSnap = await getDocs(query(collection(db, "reviews"), where("appSlug", "==", slug)));
+      // Tri côté navigateur : évite un index composite Firestore
+      const reviews = revSnap.docs.map(d => d.data())
+        .sort((x, y) => (y.createdAt?.toMillis?.() || 0) - (x.createdAt?.toMillis?.() || 0));
+
+      const ratings = reviews.map(r => r.rating).filter(r => typeof r === "number");
+      const average = ratings.length ? (ratings.reduce((s, r) => s + r, 0) / ratings.length).toFixed(1) : "--";
+      const stars = n => Array.from({ length: 5 }, (_, i) =>
+        `<span style="color:${i < Math.round(n) ? "#FFA726" : "#CBD5E1"}">★</span>`).join("");
+
+      main.innerHTML = `
+        <nav class="muted" style="font-size:12px"><a href="/">Accueil</a> › <a href="/apps/${encodeURIComponent(slug)}">${esc(a.name)}</a> › Notes et avis</nav>
+
+        <section class="card row" style="justify-content:space-around;padding:16px 0">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <span style="font-size:20px;font-weight:700">${average}</span>
+            <span style="font-size:12px;font-weight:600">${ratings.length} avis</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <span style="font-size:12px;font-weight:600">Android ${esc(a.minAndroid)}+</span>
+          </div>
+          <a href="/donner-avis?app=${encodeURIComponent(slug)}" style="display:flex;flex-direction:column;align-items:center;gap:4px;color:#0F172A">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M12 8.2l.7 1.4 1.5.2-1.1 1.1.3 1.5-1.4-.7-1.4.7.3-1.5-1.1-1.1 1.5-.2z"/></svg>
+            <span style="font-size:12px;font-weight:600">Donner mon avis</span>
+          </a>
+        </section>
+
+        ${reviews.length ? reviews.map(r => `
+          <div class="card" style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+              <span style="font-size:14px;font-weight:600">${esc(r.name || "Utilisateur")}</span>
+              <span class="muted" style="font-size:12px">${r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString("fr-FR") : ""}</span>
+            </div>
+            <div style="font-size:14px;letter-spacing:2px">${stars(r.rating)}</div>
+            <p style="margin:0;font-size:14px;line-height:1.5;color:#334155">${esc(r.text)}</p>
+          </div>`).join("")
+        : `<p class="muted">Aucun avis pour le moment.</p>`}
+      `;
+    }
+  </script>
+</body>
+  </html>
