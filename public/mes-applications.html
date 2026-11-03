@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LogicX – Mes applications</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body data-section="apps">
+  <main class="page" id="main"></main>
+
+  <script type="module">
+    import { renderTopbar, renderTabbar, esc, getDownloads, markDone, removeDownload } from "/js/nav.js";
+
+    renderTopbar();
+    renderTabbar("apps");
+
+    const main = document.getElementById("main");
+
+    function render() {
+      const list = getDownloads();
+      main.innerHTML = `
+        <div>
+          <h1 style="margin:0;font-size:22px;font-weight:800">Mes applications</h1>
+          <span class="muted">Vos téléchargements depuis ce site</span>
+        </div>
+        ${list.length ? list.map(d => `
+          <div class="card row" data-slug="${esc(d.slug)}">
+            <div class="tile" style="background:${esc(d.color || "#0369A1")}">${esc(d.initials)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:15px;font-weight:600">${esc(d.name)}</div>
+              <div class="muted">Version ${esc(d.version)} · ${d.status === "en cours" ? "Téléchargement en cours" : "Téléchargé"}</div>
+            </div>
+            ${d.status === "en cours"
+              ? `<button class="pill done" style="border:none;cursor:pointer">Terminé</button>`
+              : `<button class="pill remove" style="border:none;cursor:pointer;background:#F1F5F9;color:#475569">Retirer</button>`}
+          </div>`).join("")
+        : `<div class="card"><p class="muted" style="margin:0">Aucun téléchargement pour le moment. Les applications que vous téléchargez apparaîtront ici.</p></div>`}
+        <p class="muted" style="font-size:12px;line-height:1.5">Pour retrouver cette liste sur tous vos appareils et recevoir les mises à jour, connectez-vous avec Google dans <a href="/compte" style="color:#0369A1;font-weight:600">Compte</a>.</p>
+      `;
+
+      main.querySelectorAll(".done").forEach(b => b.addEventListener("click", () => {
+        markDone(b.closest("[data-slug]").dataset.slug);
+        location.reload();
+      }));
+      main.querySelectorAll(".remove").forEach(b => b.addEventListener("click", () => {
+        removeDownload(b.closest("[data-slug]").dataset.slug);
+        render();
+      }));
+    }
+
+    render();
+  </script>
+</body>
+</html>
