@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="fr">
 <head>
@@ -23,28 +24,49 @@
 
     const snap = await getDocs(collection(db, "apps"));
     const apps = snap.docs.map(d => d.data());
+
     const input = document.getElementById("q");
     const results = document.getElementById("results");
     const count = document.getElementById("count");
 
     function show() {
       const q = input.value.trim().toLowerCase();
-      const list = q
-        ? apps.filter(a => `${a.name} ${a.category || ""} ${a.description || ""}`.toLowerCase().includes(q))
-        : apps;
+
+      // Ne rien afficher si aucun mot-clé n'est saisi
+      if (!q) {
+        count.textContent = "";
+        results.innerHTML = "";
+        return;
+      }
+
+      // Rechercher dans le nom, la catégorie et la description
+      const list = apps.filter(a =>
+        `${a.name || ""} ${a.category || ""} ${a.description || ""}`
+          .toLowerCase()
+          .includes(q)
+      );
+
       count.textContent = `${list.length} résultat${list.length > 1 ? "s" : ""}`;
+
       results.innerHTML = list.map(a => `
         <a class="card row" href="/apps/${encodeURIComponent(a.slug)}">
-          <div class="tile" style="background:${esc(a.color || "#0369A1")}">${esc(a.initials)}</div>
+          <div class="tile" style="background:${esc(a.color || "#0369A1")}">${esc(a.initials || "")}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600">${esc(a.name)}</div>
-            <div class="muted">${esc(a.category || "")} · v${esc(a.version)}</div>
+            <div style="font-weight:600">${esc(a.name || "")}</div>
+            <div class="muted">${esc(a.category || "")} · v${esc(a.version || "")}</div>
           </div>
           <span class="pill">Voir</span>
-        </a>`).join("");
+        </a>
+      `).join("");
+
+      if (list.length === 0) {
+        results.innerHTML = `<p class="muted">Aucune application trouvée.</p>`;
+      }
     }
 
     input.addEventListener("input", show);
+
+    // Initialisation : aucun résultat affiché au chargement
     show();
   </script>
 </body>
