@@ -38,16 +38,15 @@
       const count = ratings.length;
       const average = count ? (ratings.reduce((s, r) => s + r, 0) / count).toFixed(1) : "--";
 
-      // Captures d'écran corrigées façon Play Store
+      // Captures d'écran au format compact sans le titre (style Play Store)
       const captures = Array.isArray(a.captures) ? a.captures.filter(Boolean) : [];
       const capturesHtml = captures.length ? `
         <section style="display:flex;flex-direction:column;gap:10px">
-          <h2 style="margin:0;font-size:16px;font-weight:700">Captures d'écran</h2>
-          <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory;scrollbar-width:none">
+          <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory;scrollbar-width:none">
             ${captures.map(url => {
               const imgSrc = url.startsWith("http") || url.startsWith("data:") ? url : `data:image/png;base64,${url}`;
               return `
-                <div style="flex-shrink:0;width:160px;height:320px;border-radius:16px;border:1px solid #E2E8F0;background:#f8fafc;overflow:hidden;scroll-snap-align:start">
+                <div style="flex-shrink:0;width:130px;height:240px;border-radius:12px;border:1px solid #E2E8F0;background:#f8fafc;overflow:hidden;scroll-snap-align:start;cursor:pointer;">
                   <img src="${esc(imgSrc)}" alt="Capture d'écran" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
                 </div>`;
             }).join("")}
