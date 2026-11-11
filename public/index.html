@@ -19,14 +19,17 @@
     renderTabbar("accueil");
 
     const main = document.getElementById("main");
-    const snap = await getDocs(query(collection(db, "apps"), orderBy("name")));
-    const apps = snap.docs.map(d => d.data());
+    // Correction : on trie par "nom" (au lieu de "name")
+    const snap = await getDocs(query(collection(db, "apps"), orderBy("nom")));
+    const apps = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     const card = a => `
-      <a class="card row" href="/apps/${encodeURIComponent(a.slug)}">
-        <div class="tile" style="background:${esc(a.color || "#0369A1")}">${esc(a.initials)}</div>
+      <a class="card row" href="/apps/${encodeURIComponent(a.package)}">
+        <div class="tile" style="overflow:hidden;background:#0369A1">
+          ${a.logo ? `<img src="data:image/png;base64,${a.logo}" style="width:100%;height:100%;object-fit:cover;">` : esc(a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP")}
+        </div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:16px;font-weight:600">${esc(a.name)}</div>
+          <div style="font-size:16px;font-weight:600">${esc(a.nom)}</div>
           <div class="muted">Version ${esc(a.version)}</div>
         </div>
         <span class="pill">Voir</span>
@@ -37,13 +40,15 @@
         <span class="label">Application du moment</span>
         ${apps[0] ? `
           <div class="row" style="margin-top:12px">
-            <div class="tile" style="width:52px;height:52px;background:${esc(apps[0].color || "#0369A1")}">${esc(apps[0].initials)}</div>
+            <div class="tile" style="width:52px;height:52px;overflow:hidden;background:#0369A1">
+              ${apps[0].logo ? `<img src="data:image/png;base64,${apps[0].logo}" style="width:100%;height:100%;object-fit:cover;">` : esc(apps[0].nom ? apps[0].nom.substring(0, 2).toUpperCase() : "AP")}
+            </div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:18px;font-weight:700">${esc(apps[0].name)}</div>
+              <div style="font-size:18px;font-weight:700">${esc(apps[0].nom)}</div>
               <div class="muted">${esc(apps[0].description || "")}</div>
             </div>
           </div>
-          <a class="btn" style="margin-top:12px;background:var(--tint);color:var(--primary);height:40px;width:auto;align-self:flex-start;padding:0 18px" href="/apps/${encodeURIComponent(apps[0].slug)}">Découvrir</a>`
+          <a class="btn" style="margin-top:12px;background:var(--tint);color:var(--primary);height:40px;width:auto;align-self:flex-start;padding:0 18px" href="/apps/${encodeURIComponent(apps[0].package)}">Découvrir</a>`
         : `<p class="muted">Aucune application pour le moment.</p>`}
       </div>
 
@@ -52,4 +57,4 @@
     `;
   </script>
 </body>
-  </html>
+</html>
