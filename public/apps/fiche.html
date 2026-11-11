@@ -18,54 +18,59 @@
     renderTopbar(`<a href="/" style="font-size:13px;font-weight:600;color:#0369A1">Toutes les applications</a>`);
     renderTabbar("accueil");
 
-    // /apps/momo-registre -> "momo-registre"
-    const slug = decodeURIComponent(location.pathname.split("/").filter(Boolean)[1] || "");
+    // Récupère le package depuis l'URL
+    const appId = decodeURIComponent(location.pathname.split("/").filter(Boolean)[1] || "");
     const main = document.getElementById("app");
 
-    const snap = await getDocs(query(collection(db, "apps"), where("slug", "==", slug), limit(1)));
+    // Correction : on cherche par "package" au lieu de "slug"
+    const snap = await getDocs(query(collection(db, "apps"), where("package", "==", appId), limit(1)));
 
     if (snap.empty) {
       main.innerHTML = `<h1 style="margin:0;font-size:22px">Application introuvable</h1>
         <a class="pill" href="/" style="align-self:flex-start">Retour à l'accueil</a>`;
     } else {
       const a = snap.docs[0].data();
-      document.title = `${a.name} – LogicX`;
+      document.title = `${a.nom} – LogicX`;
 
-      // Résumé des avis
-      const reviewsSnap = await getDocs(query(collection(db, "reviews"), where("appSlug", "==", a.slug)));
+      // Résumé des avis (en cherchant par package)
+      const reviewsSnap = await getDocs(query(collection(db, "reviews"), where("appSlug", "==", appId)));
       const ratings = reviewsSnap.docs.map(d => d.data().rating).filter(r => typeof r === "number");
       const count = ratings.length;
       const average = count ? (ratings.reduce((s, r) => s + r, 0) / count).toFixed(1) : "--";
 
-      // Captures d'écran : liste de liens stockée dans le champ "captures" de la fiche
+      // Captures d'écran
       const captures = Array.isArray(a.captures) ? a.captures.filter(Boolean) : [];
       const capturesHtml = captures.length ? `
         <section style="display:flex;flex-direction:column;gap:10px">
           <h2 style="margin:0;font-size:16px;font-weight:700">Captures d'écran</h2>
           <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory">
             ${captures.map(url => `
-              <img src="${esc(url)}" alt="Capture d'écran de ${esc(a.name)}" loading="lazy"
+              <img src="${esc(url)}" alt="Capture d'écran de ${esc(a.nom)}" loading="lazy"
                    style="height:300px;width:auto;max-width:70%;flex-shrink:0;border-radius:14px;border:1px solid #E2E8F0;background:#fff;scroll-snap-align:start">
             `).join("")}
           </div>
         </section>` : "";
 
+      const apkLink = a.apkUrl || a.lienApk || "";
+
       main.innerHTML = `
-        <nav class="muted" style="font-size:12px"><a href="/">Accueil</a> › ${esc(a.name)}</nav>
+        <nav class="muted" style="font-size:12px"><a href="/">Accueil</a> › ${esc(a.nom)}</nav>
 
         <section class="row" style="gap:16px">
-          <div class="tile" style="width:80px;height:80px;border-radius:22px;font-size:22px;background:${esc(a.color || "#0369A1")}">${esc(a.initials)}</div>
+          <div class="tile" style="width:80px;height:80px;border-radius:22px;overflow:hidden;background:#0369A1">
+            ${a.logo ? `<img src="data:image/png;base64,${a.logo}" style="width:100%;height:100%;object-fit:cover;">` : esc(a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP")}
+          </div>
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
-            <h1 style="margin:0;font-size:20px;font-weight:700">${esc(a.name)}</h1>
+            <h1 style="margin:0;font-size:20px;font-weight:700">${esc(a.nom)}</h1>
             <span class="muted">Version ${esc(a.version)} · Android</span>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            ${a.apkUrl
-              ? `<a id="dl" href="${esc(a.apkUrl)}" aria-label="Télécharger l'APK" style="color:#0369A1">
+            ${apkLink
+              ? `<a id="dl" href="${esc(apkLink)}" aria-label="Télécharger l'APK" style="color:#0369A1">
                    <svg width="30" height="30" viewBox="0 -960 960 960" fill="currentColor"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
                  </a>`
               : `<span class="muted" style="font-size:12px">Bientôt</span>`}
-            <span class="muted" style="font-size:11px">${esc(a.sizeMb)} Mo</span>
+            <span class="muted" style="font-size:11px">${esc(a.sizeMb || "--")} Mo</span>
           </div>
         </section>
 
@@ -82,11 +87,11 @@
           <h2 style="margin:0;font-size:16px;font-weight:700">Informations</h2>
           <div class="card" style="padding:0 14px">
             ${[
-              ["Développeur", "Logicx"],
-              ["Catégorie", a.category],
-              ["Taille", `${a.sizeMb} Mo`],
-              ["Android", `${a.minAndroid} et plus`],
-              ["Version", a.version]
+              ["Développeur", "LogicX"],
+              ["Catégorie", a.category || "Applications"],
+              ["Taille", `${a.sizeMb || "--"} Mo`],
+              ["Android", `${a.minAndroid || "5.0"} et plus`],
+              ["Version", a.version || "1.0"]
             ].map(([k, v]) => `
               <div style="display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #E2E8F0;font-size:14px">
                 <span class="muted">${k}</span><span style="font-weight:600">${esc(v)}</span>
@@ -97,7 +102,7 @@
         <section class="card" style="display:flex;flex-direction:column;gap:12px">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <h2 style="margin:0;font-size:16px;font-weight:700">Notes et avis</h2>
-            <a href="/apps/${encodeURIComponent(a.slug)}/avis" style="font-size:13px;font-weight:600;color:#0369A1">Tout voir</a>
+            <a href="/apps/${encodeURIComponent(appId)}/avis" style="font-size:13px;font-weight:600;color:#0369A1">Tout voir</a>
           </div>
           <div class="row" style="gap:16px">
             <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-right:16px;border-right:1px solid #E2E8F0">
@@ -109,7 +114,6 @@
         </section>
       `;
 
-      // Enregistre le téléchargement sur l'appareil, pour l'onglet « Mes apps »
       document.getElementById("dl")?.addEventListener("click", () => addDownload(a));
     }
   </script>
