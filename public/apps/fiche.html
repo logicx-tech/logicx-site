@@ -20,7 +20,7 @@
 
   <script type="module">
     import { db } from "/js/config.js";
-    import { renderTopbar, renderTabbar, esc, addDownload } from "/js/nav.js";
+    import { renderTopbar, renderTabbar, esc } from "/js/nav.js";
     import { collection, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     renderTopbar(`<a href="/" style="font-size:13px;font-weight:600;color:#0369A1">Toutes les applications</a>`);
@@ -54,7 +54,19 @@
 
       const captures = Array.isArray(a.captures) ? a.captures.filter(Boolean) : [];
       const apkLink = a.apkUrl || a.lienApk || "";
-      const tailleMo = a.sizeMb || a.taille || "--";
+      const tailleMo = a.tailleOctets ? (a.tailleOctets / 1048576).toFixed(1) : "--";
+
+      // Téléchargement direct de l'APK
+      const telecharger = () => {
+        if (!apkLink) return;
+        const lien = document.createElement("a");
+        lien.href = apkLink;
+        lien.setAttribute("download", "");
+        lien.rel = "noopener";
+        document.body.appendChild(lien);
+        lien.click();
+        lien.remove();
+      };
 
       main.innerHTML = `
         <nav style="font-size:12px;color:#94a3b8"><a href="/">Accueil</a> › <span style="color:#475569;font-weight:500">${esc(a.nom)}</span></nav>
@@ -88,7 +100,7 @@
             </div>
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;border-right:1px solid #f1f5f9">
               <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8.5a4 4 0 0 1 8 0"></path><path d="M9.5 5.5L8.5 3.5M14.5 5.5l1-2"></path><path d="M8 8.5h8v7a1.5 1.5 0 0 1-1.5 1.5h-5A1.5 1.5 0 0 1 8 15.5z"></path><path d="M5 11v4M19 11v4"></path><path d="M10 17.5V20M14 17.5V20"></path></svg>
-              <span style="font-size:12px;font-weight:600;color:#334155;margin-top:4px">${esc(a.minAndroid || "5.0")}+</span>
+              <span style="font-size:12px;font-weight:600;color:#334155;margin-top:4px">${esc(a.androidMin || "5.0")}+</span>
             </div>
             <div id="dl2" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px;${apkLink ? "cursor:pointer" : ""}">
               <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path></svg>
@@ -119,7 +131,7 @@
           <h2 style="margin:0;font-size:16px;font-weight:700">Informations complémentaires</h2>
           <div style="border:1px solid #E2E8F0;border-radius:12px;padding:0 14px;background:#FFFFFF">
             <div style="display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #f1f5f9;font-size:14px"><span style="color:#94a3b8">Développeur</span><span style="font-weight:600;color:#334155">LogicX</span></div>
-            <div style="display:flex;justify-content:space-between;gap:12px;padding:11px 0;font-size:14px"><span style="color:#94a3b8">Catégorie</span><span style="font-weight:600;color:#334155">${esc(a.category || "Applications")}</span></div>
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:11px 0;font-size:14px"><span style="color:#94a3b8">Catégorie</span><span style="font-weight:600;color:#334155">${esc(a.categorie || "Applications")}</span></div>
           </div>
         </section>
 
@@ -149,8 +161,8 @@
       `;
 
       // Gestionnaires de téléchargement
-      document.getElementById("dl")?.addEventListener("click", () => addDownload(a));
-      if (apkLink) document.getElementById("dl2")?.addEventListener("click", () => addDownload(a));
+      document.getElementById("dl")?.addEventListener("click", telecharger);
+      if (apkLink) document.getElementById("dl2")?.addEventListener("click", telecharger);
 
       // Gestion de la modale d'agrandissement des captures
       const modal = document.getElementById("imgModal");
