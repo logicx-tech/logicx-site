@@ -20,7 +20,7 @@
 
   <script type="module">
     import { db } from "/js/config.js";
-    import { renderTopbar, renderTabbar, esc } from "/js/nav.js";
+    import { renderTopbar, renderTabbar, esc, addDownload } from "/js/nav.js";
     import { collection, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     renderTopbar(`<a href="/" style="font-size:13px;font-weight:600;color:#0369A1">Toutes les applications</a>`);
@@ -56,9 +56,16 @@
       const apkLink = a.apkUrl || a.lienApk || "";
       const tailleMo = a.tailleOctets ? (a.tailleOctets / 1048576).toFixed(1) : "--";
 
-      // Téléchargement direct de l'APK
+      // Téléchargement : ajoute l'app à « Mes apps », puis lance le téléchargement du fichier APK
       const telecharger = () => {
         if (!apkLink) return;
+        addDownload({
+          slug: appId,
+          name: a.nom,
+          color: "#f59e0b",
+          initials: a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP",
+          version: a.version || "1.0"
+        });
         const lien = document.createElement("a");
         lien.href = apkLink;
         lien.setAttribute("download", "");
@@ -72,8 +79,8 @@
         <nav style="font-size:12px;color:#94a3b8"><a href="/">Accueil</a> › <span style="color:#475569;font-weight:500">${esc(a.nom)}</span></nav>
 
         <section style="display:flex;align-items:center;gap:16px">
-          <div style="width:80px;height:80px;border-radius:16px;background:#f59e0b;overflow:hidden;color:#FFFFFF;font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            ${a.logo ? `<img src="data:image/png;base64,${a.logo}" alt="" style="width:100%;height:100%;object-fit:cover">` : esc(a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP")}
+          <div style="width:80px;height:80px;border-radius:18px;overflow:hidden;flex-shrink:0;${a.logo ? "" : "background:#f59e0b;color:#FFFFFF;font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;"}">
+            ${a.logo ? `<img src="data:image/png;base64,${a.logo}" alt="" style="width:100%;height:100%;display:block;object-fit:cover">` : esc(a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP")}
           </div>
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
             <h1 style="margin:0;font-size:18px;font-weight:700;line-height:1.2">${esc(a.nom)}</h1>
