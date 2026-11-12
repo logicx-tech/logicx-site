@@ -1,11 +1,40 @@
-{
-  "hosting": {
-    "public": "public",
-    "ignore": ["firebase.json", "firestore.rules", "**/.*", "**/node_modules/**"],
-    "cleanUrls": true,
-    "rewrites": [
-      { "source": "/apps/*/avis", "destination": "/apps/avis.html" },
-      { "source": "/apps/**", "destination": "/apps/fiche.html" }
-    ]
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Applications : lecture publique, écriture réservée à l'administrateur
+    match /apps/{appId} {
+      allow read: if true;
+
+      allow write: if request.auth != null
+                   && request.auth.uid == "iyTLwY6dN2cV45D8fnyDMSroVno2";
+    }
+
+    // Avis : lecture publique
+    match /reviews/{reviewId} {
+
+      // Création d'un avis par un utilisateur connecté
+      allow read: if true;
+
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.rating is int
+                    && request.resource.data.rating >= 1
+                    && request.resource.data.rating <= 5
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() <= 1000;
+
+      // Réponse réservée à l'administrateur
+      allow update: if request.auth != null
+                    && request.auth.uid == "iyTLwY6dN2cV45D8fnyDMSroVno2"
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reponse', 'reponseDate'])
+                    && request.resource.data.reponse is string
+                    && request.resource.data.reponse.size() <= 1000;
+
+      // Suppression réservée à l'administrateur
+      allow delete: if request.auth != null
+                    && request.auth.uid == "iyTLwY6dN2cV45D8fnyDMSroVno2";
+    }
   }
 }
