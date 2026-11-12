@@ -10,12 +10,14 @@
   <main class="page" id="main"></main>
 
   <script type="module">
-    import { renderTopbar, renderTabbar, esc, getDownloads, markDone, removeDownload } from "/js/nav.js";
+    import { renderTopbar, renderTabbar, esc, getDownloads, removeDownload, markAllSeen, isInterrompu } from "/js/nav.js";
 
     renderTopbar();
+    markAllSeen();       // la liste est consultée : les nouveautés ne comptent plus dans le badge
     renderTabbar("apps");
 
     const main = document.getElementById("main");
+    const mo = octets => (octets / 1048576).toFixed(1) + " Mo";
 
     function render() {
       const list = getDownloads();
@@ -24,27 +26,47 @@
           <h1 style="margin:0;font-size:22px;font-weight:800">Mes applications</h1>
           <span class="muted">Vos téléchargements depuis ce site</span>
         </div>
-        ${list.length ? list.map(d => `
-          <div class="card row" data-slug="${esc(d.slug)}">
-            <div class="tile" style="background:${esc(d.color || "#0369A1")}">${esc(d.initials)}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:15px;font-weight:600">${esc(d.name)}</div>
-              <div class="muted">Version ${esc(d.version)} · ${d.status === "en cours" ? "Téléchargement en cours" : "Téléchargé"}</div>
-            </div>
-            ${d.status === "en cours"
-              ? `<button class="pill done" style="border:none;cursor:pointer">Terminé</button>`
-              : `<button class="pill remove" style="border:none;cursor:pointer;background:#F1F5F9;color:#475569">Retirer</button>`}
-          </div>`).join("")
+        ${list.length ? list.map(d => {
+          const interrompu = isInterrompu(d);
+          const enCours = d.status === "en cours" && !interrompu;
+
+          const icone = d.logo
+            ? `<img src="data:image/png;base64,${d.logo}" alt="" style="width:56px;height:56px;border-radius:14px;object-fit:cover;flex-shrink:0">`
+            : `<div style="width:56px;height:56px;border-radius:14px;background:${esc(d.color || "#f59e0b")};color:#FFFFFF;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${esc(d.initials)}</div>`;
+
+          let sous = "";
+          let action = "";
+          if (enCours) {
+            const pct = d.progress || 0;
+            sous = `
+              <div style="height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden;margin:6px 0 4px">
+                <div style="height:100%;width:${pct}%;background:#0284c7"></div>
+              </div>
+              <div class="muted" style="font-size:12px">${pct} % · ${d.total ? mo(d.recu || 0) + " sur " + mo(d.total) : "Téléchargement en cours"}</div>`;
+          } else if (interrompu) {
+            sous = `<div class="muted" style="font-size:12px">Téléchargement interrompu · ${d.progress || 0} %</div>`;
+            action = `<a href="/apps/${encodeURIComponent(d.slug)}" style="font-size:12px;font-weight:600;color:#0284c7;padding:6px 12px;border:1px solid #0284c7;border-radius:999px">Reprendre</a>`;
+          } else {
+            sous = `<div class="muted" style="font-size:12px">Version ${esc(d.version)} · Téléchargé${d.total ? " · " + mo(d.total) : ""}</div>`;
+            action = `<button class="remove" data-slug="${esc(d.slug)}" style="border:none;cursor:pointer;background:#F1F5F9;color:#475569;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px">Retirer</button>`;
+          }
+
+          return `
+            <div class="card row" style="display:flex;align-items:center;gap:12px">
+              ${icone}
+              <div style="flex:1;min-width:0">
+                <div style="font-size:15px;font-weight:600">${esc(d.name)}</div>
+                ${sous}
+              </div>
+              ${action}
+            </div>`;
+        }).join("")
         : `<div class="card"><p class="muted" style="margin:0">Aucun téléchargement pour le moment. Les applications que vous téléchargez apparaîtront ici.</p></div>`}
         <p class="muted" style="font-size:12px;line-height:1.5">Pour retrouver cette liste sur tous vos appareils et recevoir les mises à jour, connectez-vous avec Google dans <a href="/compte" style="color:#0369A1;font-weight:600">Compte</a>.</p>
       `;
 
-      main.querySelectorAll(".done").forEach(b => b.addEventListener("click", () => {
-        markDone(b.closest("[data-slug]").dataset.slug);
-        location.reload();
-      }));
       main.querySelectorAll(".remove").forEach(b => b.addEventListener("click", () => {
-        removeDownload(b.closest("[data-slug]").dataset.slug);
+        removeDownload(b.dataset.slug);
         render();
       }));
     }
