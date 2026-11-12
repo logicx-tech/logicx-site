@@ -185,7 +185,9 @@
           ? a.captures.filter(url => typeof url === "string" && url)
           : [];
 
-        const apkLink = a.apkUrl || a.lienApk || "";
+        // PRIORITÉ AU LIEN PERMANENT
+        // Utiliser lienApk avant apkUrl.
+        const apkLink = a.lienApk || a.apkUrl || "";
 
         const tailleMo = a.tailleOctets
           ? mo(a.tailleOctets)
