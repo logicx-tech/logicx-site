@@ -77,16 +77,25 @@
       `;
     }
 
-    // Téléchargement direct : Chrome gère le fichier
-    function declencher(href) {
-      const lien = document.createElement("a");
+    // Vérification du lien de téléchargement
+    function lienAPKValide(url) {
+      if (typeof url !== "string" || !url.trim()) {
+        return false;
+      }
 
-      lien.href = href;
-      lien.rel = "noopener";
+      try {
+        const parsed = new URL(url.trim());
 
-      document.body.appendChild(lien);
-      lien.click();
-      lien.remove();
+        return (
+          parsed.protocol === "https:" &&
+          (
+            parsed.hostname === "github.com" ||
+            parsed.hostname === "release-assets.githubusercontent.com"
+          )
+        );
+      } catch {
+        return false;
+      }
     }
 
     // Chargement principal
@@ -185,15 +194,30 @@
           ? a.captures.filter(url => typeof url === "string" && url)
           : [];
 
-        // PRIORITÉ AU LIEN PERMANENT
-        // Utiliser lienApk avant apkUrl.
-        const apkLink = a.lienApk || a.apkUrl || "";
+        // 4. Priorité au lien GitHub permanent
+        const lienPermanent = typeof a.lienApk === "string"
+          ? a.lienApk.trim()
+          : "";
+
+        const ancienLien = typeof a.apkUrl === "string"
+          ? a.apkUrl.trim()
+          : "";
+
+        const apkLink = lienAPKValide(lienPermanent)
+          ? lienPermanent
+          : lienAPKValide(ancienLien)
+            ? ancienLien
+            : "";
+
+        console.log("Lien permanent Firestore :", lienPermanent);
+        console.log("Ancien lien Firestore :", ancienLien);
+        console.log("Lien APK retenu :", apkLink);
 
         const tailleMo = a.tailleOctets
           ? mo(a.tailleOctets)
           : "--";
 
-        // 4. Téléchargement direct
+        // 5. Gestion du téléchargement
         let enCours = false;
 
         const telecharger = () => {
@@ -206,21 +230,27 @@
           const contenuBouton = bouton ? bouton.innerHTML : "";
 
           if (bouton) {
-            bouton.textContent = "Lancement...";
+            bouton.textContent = "Ouverture de Chrome...";
+            bouton.disabled = true;
+            bouton.style.opacity = "0.7";
           }
 
-          declencher(apkLink);
+          // Navigation directe vers le lien APK.
+          // Chrome prend en charge le téléchargement et son suivi.
+          window.location.assign(apkLink);
 
           setTimeout(() => {
             enCours = false;
 
             if (bouton) {
               bouton.innerHTML = contenuBouton;
+              bouton.disabled = false;
+              bouton.style.opacity = "1";
             }
-          }, 2000);
+          }, 3000);
         };
 
-        // 5. Construction de l'interface
+        // 6. Construction de l'interface
         main.innerHTML = `
 
           <nav style="font-size:12px;color:#94a3b8">
@@ -457,7 +487,7 @@
           </section>
         `;
 
-        // 6. Gestionnaires de téléchargement
+        // 7. Gestionnaires de téléchargement
         document.getElementById("dl")?.addEventListener(
           "click",
           telecharger
@@ -470,7 +500,7 @@
           );
         }
 
-        // 7. Gestion des captures
+        // 8. Gestion des captures
         const modal = document.getElementById("imgModal");
         const modalImg = document.getElementById("modalImg");
 
