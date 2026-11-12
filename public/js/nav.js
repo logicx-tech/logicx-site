@@ -20,7 +20,7 @@
 
   <script type="module">
     import { db } from "/js/config.js";
-    import { renderTopbar, renderTabbar, esc, addDownload } from "/js/nav.js";
+    import { renderTopbar, renderTabbar, esc, addDownload, updateDownload, markDone } from "/js/nav.js";
     import { collection, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     renderTopbar(`<a href="/" style="font-size:13px;font-weight:600;color:#0369A1">Toutes les applications</a>`);
@@ -55,32 +55,82 @@
       const captures = Array.isArray(a.captures) ? a.captures.filter(Boolean) : [];
       const apkLink = a.apkUrl || a.lienApk || "";
       const tailleMo = a.tailleOctets ? (a.tailleOctets / 1048576).toFixed(1) : "--";
+      const nomFichier = `${a.nom || appId}-${a.version || ""}.apk`.replace(/\s+/g, "-");
 
-      // Téléchargement : ajoute l'app à « Mes apps », puis lance le téléchargement du fichier APK
-      const telecharger = () => {
-        if (!apkLink) return;
-        addDownload({
-          slug: appId,
-          name: a.nom,
-          color: "#f59e0b",
-          initials: a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP",
-          version: a.version || "1.0"
-        });
+      // Déclenche le téléchargement d'un fichier à partir d'une adresse
+      const declencher = (href, nom) => {
         const lien = document.createElement("a");
-        lien.href = apkLink;
-        lien.setAttribute("download", "");
+        lien.href = href;
+        lien.download = nom;
         lien.rel = "noopener";
         document.body.appendChild(lien);
         lien.click();
         lien.remove();
       };
 
+      let enCours = false;
+
+      // Téléchargement avec progression : l'APK est lu par morceaux, puis enregistré
+      const telecharger = async () => {
+        if (!apkLink || enCours) return;
+        enCours = true;
+        const bouton = document.getElementById("dl");
+        const contenuBouton = bouton ? bouton.innerHTML : "";
+
+        addDownload({
+          slug: appId,
+          name: a.nom,
+          logo: a.logo || "",
+          color: "#f59e0b",
+          initials: a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP",
+          version: a.version || "1.0",
+          total: a.tailleOctets || 0
+        });
+
+        try {
+          const reponse = await fetch(apkLink);
+          if (!reponse.ok || !reponse.body) throw new Error("reponse invalide");
+
+          const total = Number(reponse.headers.get("content-length")) || a.tailleOctets || 0;
+          updateDownload(appId, { total });
+
+          const lecteur = reponse.body.getReader();
+          const morceaux = [];
+          let recu = 0;
+          let dernier = 0;
+          for (;;) {
+            const { done, value } = await lecteur.read();
+            if (done) break;
+            morceaux.push(value);
+            recu += value.length;
+            if (Date.now() - dernier > 250) {
+              const pct = total ? Math.min(99, Math.round((recu / total) * 100)) : 0;
+              updateDownload(appId, { progress: pct, recu });
+              if (bouton) bouton.textContent = pct + " %";
+              dernier = Date.now();
+            }
+          }
+
+          const url = URL.createObjectURL(new Blob(morceaux, { type: "application/vnd.android.package-archive" }));
+          declencher(url, nomFichier);
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+          updateDownload(appId, { status: "terminé", progress: 100, recu, total: recu, vu: false });
+        } catch (erreur) {
+          // Repli : téléchargement direct du lien, sans suivi de progression
+          declencher(apkLink, nomFichier);
+          markDone(appId);
+        } finally {
+          enCours = false;
+          if (bouton) bouton.innerHTML = contenuBouton;
+        }
+      };
+
       main.innerHTML = `
         <nav style="font-size:12px;color:#94a3b8"><a href="/">Accueil</a> › <span style="color:#475569;font-weight:500">${esc(a.nom)}</span></nav>
 
         <section style="display:flex;align-items:center;gap:16px">
-          <div style="width:80px;height:80px;border-radius:16px;background:#f59e0b;overflow:hidden;color:#FFFFFF;font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            ${a.logo ? `<img src="data:image/png;base64,${a.logo}" alt="" style="width:100%;height:100%;object-fit:cover">` : esc(a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP")}
+          <div style="width:80px;height:80px;border-radius:18px;overflow:hidden;flex-shrink:0;${a.logo ? "" : "background:#f59e0b;color:#FFFFFF;font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;"}">
+            ${a.logo ? `<img src="data:image/png;base64,${a.logo}" alt="" style="width:100%;height:100%;display:block;object-fit:cover">` : esc(a.nom ? a.nom.substring(0, 2).toUpperCase() : "AP")}
           </div>
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
             <h1 style="margin:0;font-size:18px;font-weight:700;line-height:1.2">${esc(a.nom)}</h1>
